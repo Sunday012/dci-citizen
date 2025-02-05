@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +53,10 @@ export default function RootLayout({
         </DialogContent>
       </Dialog>
 
-      <main className="min-h-screen max-w-md mx-auto bg-white">{children}</main>
+      <main className="min-h-screen max-w-md mx-auto bg-white">
+        {children}
+        <Toaster />
+      </main>
       </body>
     </html>
   );

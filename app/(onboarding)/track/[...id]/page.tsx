@@ -6,6 +6,7 @@ import { useStore } from "@/store/useStore"
 import { Clock, MapPin } from "lucide-react"
 import { AuthHeader } from "@/app/_components/auth-header"
 import { LoadingDialog } from "@/components/loading-modal"
+import { useToast } from "@/hooks/use-toast"
 
 interface CaseDetails {
   id: string
@@ -24,6 +25,7 @@ export default function CaseDetails() {
   const router = useRouter()
   const getCase = useStore((state) => state.getCase)
   const updateCaseStatus = useStore((state) => state.updateCaseStatus)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchCase = async () => {
@@ -34,6 +36,11 @@ export default function CaseDetails() {
       const result = await getCase(caseId)
 
       if (!result) {
+        toast({
+          variant: "destructive",
+          title: "Case Not Found",
+          description: `No case found with ID: ${caseId}`,
+        })
         router.push("/track")
         return
       }
@@ -60,13 +67,13 @@ export default function CaseDetails() {
     }
 
     fetchCase()
-  }, [params?.id, getCase, router, updateCaseStatus])
+  }, [params?.id, getCase, router, updateCaseStatus, toast])
 
   if (isLoading) {
     return (
-        <div>
-            <LoadingDialog title="Searching Case ID" isOpen={true} />
-        </div>
+      <div>
+        <LoadingDialog title="Searching Case ID" isOpen={true} />
+      </div>
     )
   }
 
@@ -147,4 +154,3 @@ export default function CaseDetails() {
     </div>
   )
 }
-
