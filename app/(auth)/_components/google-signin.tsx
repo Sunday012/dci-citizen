@@ -6,8 +6,8 @@ import { useAuthStore } from "@/store/authStore"
 import { useMutation } from "@tanstack/react-query"
 import axios, { AxiosError } from 'axios'
 import { useRouter } from "next/navigation"
-import Cookies from 'js-cookie'
-import { userStore } from "@/store/useStore"
+import { useUserStore } from "@/store/useStore"
+import { sendTokenToApi } from "@/api/sendToken"
 
 // API Response Types
 interface ApiError {
@@ -20,32 +20,32 @@ interface ApiError {
 
 type ApiResponse = any
 
-const sendTokenToApi = async (token: string): Promise<ApiResponse> => {
-  const formData = new FormData();
-  formData.append("firebase_token", token);
+// const sendTokenToApi = async (token: string): Promise<ApiResponse> => {
+//   const formData = new FormData();
+//   formData.append("firebase_token", token);
 
-  const { data } = await axios.post<ApiResponse>('http://167.235.51.199:8000/api/v1/citizens/', 
-    formData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
-      }
-    }
-  );
-  console.log(data)
-  if (data.data.access_token) {
-    console.log("access_token", data.data.access_token)
-    Cookies.set('auth_token', data.data.access_token)
-  }
-  return data;
-}
+//   const { data } = await axios.post<ApiResponse>('http://167.235.51.199:8000/api/v1/citizens/', 
+//     formData,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         'Content-Type': 'multipart/form-data'
+//       }
+//     }
+//   );
+//   console.log(data)
+//   if (data.data.access_token) {
+//     console.log("access_token", data.data.access_token)
+//     Cookies.set('auth_token', data.data.access_token)
+//   }
+//   return data;
+// }
 
 export default function GoogleSignIn() {
   const { toast } = useToast()
   const { signInWithGoogle, error } = useAuthStore()
   const route = useRouter()
-  const {setUser, setToken} = userStore()
+  const {setUser, setToken} = useUserStore()
 
   const tokenMutation = useMutation<
     ApiResponse,

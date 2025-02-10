@@ -45,7 +45,7 @@ const mockCases: Record<string, Case> = {
   },
 }
 
-export const userStore = create<StoreState>()(
+export const useUserStore = create<StoreState>()(
   persist(
     (set, get) => ({
       user: null,

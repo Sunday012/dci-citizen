@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { userStore } from "@/store/useStore"
+import { useUserStore } from "@/store/useStore"
 import { Clock, MapPin } from "lucide-react"
 import { AuthHeader } from "@/app/_components/auth-header"
 import { LoadingDialog } from "@/components/loading-modal"
@@ -25,8 +25,8 @@ export default function CaseDetails() {
   const [caseDetails, setCaseDetails] = useState<CaseDetails | null>(null)
   const params = useParams()
   const router = useRouter()
-  const getCase = userStore((state) => state.getCase)
-  const updateCaseStatus = userStore((state) => state.updateCaseStatus)
+  const getCase = useUserStore((state) => state.getCase)
+  const updateCaseStatus = useUserStore((state) => state.updateCaseStatus)
   // const { toast } = useToast()
   const { 
     data: reportStatus, 

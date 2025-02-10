@@ -20,7 +20,7 @@ import { toast } from "@/hooks/use-toast"
 import api from "@/utils/api"
 import Cookies from 'js-cookie'
 import { ReportIdDialog } from "../_components/report-dialog-id"
-import { userStore } from "@/store/useStore"
+import { useUserStore } from "@/store/useStore"
  // Optional: for error notifications
 
 const crimeTypes = ["Robbery", "Carjacking", "House Break-in", "Mob Justice", "Drug Trafficking"]
@@ -62,7 +62,7 @@ export default function ReportCrime() {
   const [showCrimeTypes, setShowCrimeTypes] = React.useState(false)
   const [isOpen, setIsOpen] = React.useState(false)
   const [data, setData] = React.useState<ReportResponse | undefined>()
-  const {user, token} = userStore()
+  const {user, token} = useUserStore()
 
   const convertTo24Hour = (time12h: string): string => {
     const [time, modifier] = time12h.split(' ');
@@ -122,14 +122,6 @@ export default function ReportCrime() {
         throw error
       }
     },
-    onError: (error: any) => {
-      console.error('Submission error:', error)
-      toast({
-        title: "Error submitting report",
-        description: error.message || "An error occurred while submitting your report. Please try again.",
-        variant: "destructive",
-      })
-    },
     onSuccess: (data) => {
       console.log(data)
       setData(data)
@@ -139,7 +131,15 @@ export default function ReportCrime() {
         description: "Your report has been submitted successfully.",
         variant: "default",
       })
-    }
+    },
+    onError: (error: any) => {
+      console.error('Submission error:', error)
+      toast({
+        title: "Error submitting report",
+        description: error.message || "An error occurred while submitting your report. Please try again.",
+        variant: "destructive",
+      })
+    },
   })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { userStore } from "@/store/useStore"
+import { useUserStore } from "@/store/useStore"
 import { AuthHeader } from "@/app/_components/auth-header"
 import GoogleSignIn from "../_components/google-signin"
 
@@ -13,7 +13,7 @@ export default function Auth() {
   const [email, setEmail] = useState("")
   const [full_name, setName] = useState("")
   const router = useRouter()
-  const setUser = userStore((state) => state.setUser)
+  const setUser = useUserStore((state) => state.setUser)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

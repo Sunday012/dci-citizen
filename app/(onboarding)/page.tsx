@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, UserCircle } from "lucide-react";
-import { userStore } from "@/store/useStore";
+import { useUserStore } from "@/store/useStore";
 import { Icons } from "@/components/icons";
 import Image from "next/image";
 
 export default function Home() {
-  const { user, signOut } = userStore();
+  const { user, signOut } = useUserStore();
   const router = useRouter();
 
   // Removed automatic redirect check
