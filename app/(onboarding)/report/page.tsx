@@ -64,6 +64,21 @@ export default function ReportCrime() {
   const [data, setData] = React.useState<ReportResponse | undefined>()
   const {user, token} = userStore()
 
+  const convertTo24Hour = (time12h: string): string => {
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    
+    let hours24 = parseInt(hours, 10);
+    
+    if (hours24 === 12) {
+      hours24 = modifier === 'PM' ? 12 : 0;
+    } else if (modifier === 'PM') {
+      hours24 = hours24 + 12;
+    }
+    
+    return `${hours24.toString().padStart(2, '0')}:${minutes}`;
+  }
+
   const isFormValid =
     formData.crimeType &&
     formData.crime_date &&
@@ -75,16 +90,17 @@ export default function ReportCrime() {
   // API integration using TanStack Query
   const { mutate: submitReport, isPending, isSuccess } = useMutation<ReportResponse, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      if (!token) {
-        throw new Error('No authentication token found')
-      }
-  
+      const endpoint = token 
+        ? '/citizens/report/'
+        : '/citizens/report/anonymous'
+      
       const formDataToSend = new FormData()
+      const time24 = convertTo24Hour(data.crime_time)
       
       // Append all form fields
       formDataToSend.append("crime_type", data.crimeType)
       formDataToSend.append("crime_date", data.crime_date ? data.crime_date.toISOString().split('T')[0] : "")
-      formDataToSend.append("crime_time", data.crime_time)
+      formDataToSend.append("crime_time", time24)
       formDataToSend.append("crime_location", data.crime_location)
       formDataToSend.append("eye_witness", user?.user_id || "")
       formDataToSend.append("incident_description", data.incident_description)
@@ -95,7 +111,7 @@ export default function ReportCrime() {
       })
   
       try {
-        const response = await api.post('/citizens/report/', formDataToSend, {
+        const response = await api.post(endpoint, formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           }
@@ -110,7 +126,7 @@ export default function ReportCrime() {
       console.error('Submission error:', error)
       toast({
         title: "Error submitting report",
-        description: error.message || "Please make sure you're logged in and try again.",
+        description: error.message || "An error occurred while submitting your report. Please try again.",
         variant: "destructive",
       })
     },
