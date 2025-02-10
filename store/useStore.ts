@@ -2,9 +2,12 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 interface User {
-  name: string
-  email: string
-  isVerified: boolean
+  user_id?: string;
+  full_name?: string;
+  email?: string;
+  created_at?: string;
+  updated_at?: string;
+  role?: string;
 }
 
 interface Case {
@@ -20,6 +23,8 @@ interface Case {
 interface StoreState {
   user: User | null
   cases: Record<string, Case>
+  token: string | null
+  setToken: (token: string) => void
   setUser: (user: User | null) => void
   signOut: () => void
   getCase: (id: string) => Promise<Case | null>
@@ -40,12 +45,14 @@ const mockCases: Record<string, Case> = {
   },
 }
 
-export const useStore = create<StoreState>()(
+export const userStore = create<StoreState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       cases: mockCases,
       setUser: (user) => set({ user }),
+      setToken: (token) => set({ token }),
       signOut: () => set({ user: null }),
       getCase: async (id: string) => {
         // Simulate API delay

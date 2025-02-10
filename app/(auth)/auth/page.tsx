@@ -4,16 +4,16 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useStore } from "@/store/useStore"
+import { userStore } from "@/store/useStore"
 import { AuthHeader } from "@/app/_components/auth-header"
 import GoogleSignIn from "../_components/google-signin"
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
-  const [name, setName] = useState("")
+  const [full_name, setName] = useState("")
   const router = useRouter()
-  const setUser = useStore((state) => state.setUser)
+  const setUser = userStore((state) => state.setUser)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -22,16 +22,14 @@ export default function Auth() {
       // Handle sign up
       setUser({
         email,
-        name,
-        isVerified: false,
+        full_name,
       })
       router.push("/verify")
     } else {
       // Handle sign in
       setUser({
         email,
-        name: email.split("@")[0], // Using email username as name for demo
-        isVerified: true,
+        full_name: email.split("@")[0], // Using email username as name for demo
       })
       router.push("/")
     }

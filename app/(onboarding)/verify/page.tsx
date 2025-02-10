@@ -1,47 +1,117 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { useStore } from "@/store/useStore";
-import { AuthHeader } from "@/app/_components/auth-header";
-import { Icons } from "@/components/icons";
-import { SuccessDialog } from "@/components/success-modal";
-import { LoadingDialog } from "@/components/loading-modal";
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { userStore } from "@/store/useStore"
+import { AuthHeader } from "@/app/_components/auth-header"
+import { Icons } from "@/components/icons"
+import { SuccessDialog } from "@/components/success-modal"
+import { LoadingDialog } from "@/components/loading-modal"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import axios, { AxiosError } from 'axios'
+import { useAuthStore } from "@/store/authStore"
+import Cookies from "js-cookie"
+import api from "@/utils/api"
+import { toast } from "@/hooks/use-toast"
+
+// Types
+interface ApiError {
+  detail: Array<{
+    loc: [string, number]
+    msg: string
+    type: string
+  }>
+}
+
+interface CitizenResponse {
+  citizen_id: string;
+  // ... other fields
+}
+
+interface KycResponse {
+  status: string;
+  // ... other fields
+}
 
 export default function Verify() {
-  const [status, setStatus] = useState<"idle" | "processing" | "success">(
-    "idle"
-  );
-  const [file, setFile] = useState<File | null>(null);
-  const router = useRouter();
-  const { user, setUser } = useStore();
+  const [status, setStatus] = useState<"idle" | "processing" | "success">("idle")
+  const [file, setFile] = useState<File | null>(null)
+  const router = useRouter()
+  const { firebase_user, setUser } = useAuthStore()
+  const {user} = userStore()
+  const token = Cookies.get('auth_token')
+
+  // Query to get citizen_id
+  // const citizenQuery = useQuery<CitizenResponse, AxiosError<ApiError>>({
+  //   queryKey: ['citizen'],
+  //   queryFn: async () => {
+  //     const token = await user?.getIdToken();
+  //     const { data } = await axios.post<CitizenResponse>(
+  //       '/api/v1/citizens/',
+  //       { firebaseToken: token },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`
+  //         }
+  //       }
+  //     );
+  //     return data;
+  //   },
+  //   enabled: !!user && !user.emailVerified,
+  // });
+
+  // KYC Mutation
+  const kycMutation = useMutation<KycResponse, AxiosError<ApiError>, FormData>({
+    mutationFn: async (formData) => {
+      const { data } = await api.post<KycResponse>(
+        '/citizens/kyc/', formData,{
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      setStatus("success");
+      setUser({ ...firebase_user!, emailVerified: true });
+      setTimeout(() => router.push("/"), 1000);
+    },
+    onError: (error) => {
+      setStatus("idle");
+      // Handle error appropriately - maybe show a toast
+      toast({
+        title: "KYC Verification Failed",
+        description: error.response?.data?.detail?.[0]?.msg || "An error occurred during KYC verification.",
+        variant: "destructive",
+      })
+      console.error('KYC Error:', error.response?.data);
+    }
+  });
 
   // Redirect if no user or already verified
   useEffect(() => {
-    if (!user || user.isVerified) {
+    if (!token) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [token, router]);
 
   // If no user, return null without redirect
-  if (!user) {
+  if (!token) {
     return null;
   }
 
   const handleSubmit = async () => {
-    if (!file) return;
+    if (!file || !user?.user_id) return;
 
     setStatus("processing");
-    // Simulate processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setStatus("success");
+    
+    const formData = new FormData();
+    formData.append('citizen_id', user?.user_id);
+    formData.append('kyc_file', file);
 
-    // Update user verification status
-    setUser({ ...user, isVerified: true });
-
-    // Redirect after success
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push("/");
+    kycMutation.mutate(formData);
   };
 
   return (
@@ -86,15 +156,17 @@ export default function Verify() {
             </div>
             <Button
               className="w-full"
-              disabled={!file || status === "processing"}
+              disabled={!file || status === "processing" || kycMutation.isPending}
               onClick={handleSubmit}
             >
-              {status === "processing" ? "Processing..." : "Submit"}
+              {status === "processing" || kycMutation.isPending 
+                ? "Processing..." 
+                : "Submit"}
             </Button>
           </div>
         )}
       </div>
-      {status === "processing" && (
+      {(status === "processing" || kycMutation.isPending) && (
         <LoadingDialog title="Processing" isOpen={true} />
       )}
     </div>

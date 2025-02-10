@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import axios from "axios"
+import { useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -14,79 +16,151 @@ import { TimePicker } from "../_components/time-picker"
 import { Icons } from "@/components/icons"
 import { LoadingDialog } from "@/components/loading-modal"
 import { SuccessDialog } from "@/components/success-modal"
+import { toast } from "@/hooks/use-toast"
+import api from "@/utils/api"
+import Cookies from 'js-cookie'
+import { ReportIdDialog } from "../_components/report-dialog-id"
+import { userStore } from "@/store/useStore"
+ // Optional: for error notifications
 
 const crimeTypes = ["Robbery", "Carjacking", "House Break-in", "Mob Justice", "Drug Trafficking"]
 
 interface FormData {
   crimeType: string
-  date: Date | null
-  time: string
-  location: string
-  witness: string
-  description: string
-  files: File[]
+  crime_date: Date | null
+  crime_time: string
+  crime_location: string
+  eye_witness: string
+  incident_description: string
+  report_files: File[]
+}
+
+interface ReportResponse {
+  data: {
+    user_id: string;
+    assigned_officer: string | null;
+    report_id: string;
+  };
+  message: string;
+  status_code: number;
+  success: boolean;
 }
 
 export default function ReportCrime() {
   const router = useRouter()
   const [formData, setFormData] = React.useState<FormData>({
     crimeType: "",
-    date: null,
-    time: "",
-    location: "",
-    witness: "",
-    description: "",
-    files: [],
+    crime_date: null,
+    crime_time: "",
+    crime_location: "",
+    eye_witness: "",
+    incident_description: "",
+    report_files: [],
   })
   const [showDatePicker, setShowDatePicker] = React.useState(false)
   const [showTimePicker, setShowTimePicker] = React.useState(false)
   const [showCrimeTypes, setShowCrimeTypes] = React.useState(false)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isSuccess, setIsSuccess] = React.useState(false)
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [data, setData] = React.useState<ReportResponse | undefined>()
+  const {user, token} = userStore()
 
   const isFormValid =
     formData.crimeType &&
-    formData.date &&
-    formData.time &&
-    formData.location &&
-    formData.witness &&
-    formData.description.length >= 10
+    formData.crime_date &&
+    formData.crime_time &&
+    // formData.eye_witness &&
+    formData.crime_location &&
+    formData.incident_description.length >= 10
+
+  // API integration using TanStack Query
+  const { mutate: submitReport, isPending, isSuccess } = useMutation<ReportResponse, Error, FormData>({
+    mutationFn: async (data: FormData) => {
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+  
+      const formDataToSend = new FormData()
+      
+      // Append all form fields
+      formDataToSend.append("crime_type", data.crimeType)
+      formDataToSend.append("crime_date", data.crime_date ? data.crime_date.toISOString().split('T')[0] : "")
+      formDataToSend.append("crime_time", data.crime_time)
+      formDataToSend.append("crime_location", data.crime_location)
+      formDataToSend.append("eye_witness", user?.user_id || "")
+      formDataToSend.append("incident_description", data.incident_description)
+      
+      // Append files
+      data.report_files.forEach((file) => {
+        formDataToSend.append(`report_files`, file)
+      })
+  
+      try {
+        const response = await api.post('/citizens/report/', formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        })
+        return response.data
+      } catch (error) {
+        console.error('API Error:', error)
+        throw error
+      }
+    },
+    onError: (error: any) => {
+      console.error('Submission error:', error)
+      toast({
+        title: "Error submitting report",
+        description: error.message || "Please make sure you're logged in and try again.",
+        variant: "destructive",
+      })
+    },
+    onSuccess: (data) => {
+      console.log(data)
+      setData(data)
+      setIsOpen(true)
+      toast({
+        title: "Report submitted",
+        description: "Your report has been submitted successfully.",
+        variant: "default",
+      })
+    }
+  })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    if (files.length + formData.files.length <= 2) {
+    if (files.length + formData.report_files.length <= 2) {
       setFormData((prev) => ({
         ...prev,
-        files: [...prev.files, ...files],
+        report_files: [...prev.report_files, ...files],
       }))
     }
+  }
+
+  const handleClose = () => {
+    setIsOpen(false)
   }
 
   const removeFile = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      files: prev.files.filter((_, i) => i !== index),
+      files: prev.report_files.filter((_, i) => i !== index),
     }))
   }
 
   const handleSubmit = async () => {
     if (!isFormValid) return
-
-    setIsSubmitting(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsSubmitting(false)
-    setIsSuccess(true)
-
-    // Redirect after showing success
-    setTimeout(() => {
-      router.push("/")
-    }, 1500)
+    const token = Cookies.get('auth_token')
+    console.log('Token at submission:', token)
+    submitReport(formData)
   }
+
+  // Rest of your component remains the same until the return statement
 
   return (
     <>
-      <div className={cn("h-screen flex flex-col", (isSubmitting || isSuccess) && "blur-sm")}>
+      <div className={cn("h-screen flex flex-col", (isPending || isSuccess) && "blur-sm")}>
+        {/* Rest of your JSX remains the same */}
+        {/* Just update the Button onClick to use the new handleSubmit */}
         <AuthHeader title="Report a crime" />
         <div className="p-4 flex-1">
           <div className="space-y-4">
@@ -98,7 +172,7 @@ export default function ReportCrime() {
                     {formData.crimeType || "Select crime type---"}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="px-[26px] py-[24px] bg-white rounded-[10px]">
+                <DialogContent className="px-[26px] py-[24px] bg-white w-[90%] rounded-[10px]">
                 <DialogTitle className="text-[#81889B]">Select crime type</DialogTitle>
                   <div className="">
                     <div className="space-y-4">
@@ -127,9 +201,9 @@ export default function ReportCrime() {
               <label className="text-sm text-gray-600">Crime date</label>
               <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className={`w-full rounded-[10px] h-[43px] border-[#E2E2E2] ${formData.date ? "text-dci-dark" : "text-[#C6C9D3]"} bg-[#F3F4F4] justify-start font-normal`}>
-                    {formData.date
-                      ? formData.date.toLocaleDateString("en-US", {
+                  <Button variant="outline" className={`w-full rounded-[10px] h-[43px] border-[#E2E2E2] ${formData.crime_date ? "text-dci-dark" : "text-[#C6C9D3]"} bg-[#F3F4F4] justify-start font-normal`}>
+                    {formData.crime_date
+                      ? formData.crime_date.toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",
                           year: "numeric",
@@ -140,9 +214,9 @@ export default function ReportCrime() {
                 <DialogContent>
                  <DialogTitle></DialogTitle>
                   <DatePicker
-                    value={formData.date}
-                    onChange={(date) => {
-                      setFormData((prev) => ({ ...prev, date }))
+                    value={formData.crime_date}
+                    onChange={(crime_date) => {
+                      setFormData((prev) => ({ ...prev, crime_date }))
                       setShowDatePicker(false)
                     }}
                     onClose={() => setShowDatePicker(false)}
@@ -155,16 +229,16 @@ export default function ReportCrime() {
               <label className="text-sm text-gray-600">Crime time</label>
               <Dialog open={showTimePicker} onOpenChange={setShowTimePicker}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className={`w-full rounded-[10px] h-[43px] border-[#E2E2E2] ${formData.time ? "text-dci-dark" : "text-[#C6C9D3]"} bg-[#F3F4F4] justify-start font-normal`}>
-                    {formData.time || "Select time---"}
+                  <Button variant="outline" className={`w-full rounded-[10px] h-[43px] border-[#E2E2E2] ${formData.crime_time ? "text-dci-dark" : "text-[#C6C9D3]"} bg-[#F3F4F4] justify-start font-normal`}>
+                    {formData.crime_time || "Select time---"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                 <DialogTitle></DialogTitle>
                   <TimePicker
-                    value={formData.time}
-                    onChange={(time) => {
-                      setFormData((prev) => ({ ...prev, time }))
+                    value={formData.crime_time}
+                    onChange={(crime_time) => {
+                      setFormData((prev) => ({ ...prev, crime_time }))
                       setShowTimePicker(false)
                     }}
                     onClose={() => setShowTimePicker(false)}
@@ -177,19 +251,9 @@ export default function ReportCrime() {
               <label className="text-sm text-gray-600">Add location</label>
               <Input
                 placeholder="Select location---"
-                value={formData.location}
+                value={formData.crime_location}
                 className="placeholder:text-[#C6C9D3]"
-                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-600">Eye witness</label>
-              <Input
-                placeholder="Add eye witness---"
-                value={formData.witness}
-                className="placeholder:text-[#C6C9D3]"
-                onChange={(e) => setFormData((prev) => ({ ...prev, witness: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, crime_location: e.target.value }))}
               />
             </div>
 
@@ -197,8 +261,8 @@ export default function ReportCrime() {
               <label className="text-sm text-gray-600">Incident description</label>
               <Textarea
                 placeholder="Write a brief description---"
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                value={formData.incident_description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, incident_description: e.target.value }))}
                 className="min-h-[100px] placeholder:text-[#C6C9D3]"
               />
             </div>
@@ -211,7 +275,7 @@ export default function ReportCrime() {
                   <span className="text-sm text-gray-400">Add here</span>
                   <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
                 </label>
-                {formData.files.map((file, index) => (
+                {formData.report_files.map((file, index) => (
                   <div
                     key={index}
                     className="aspect-square rounded-lg border border-[#E2E2E2] bg-[#F3F4F4] flex flex-col items-center justify-center relative"
@@ -231,24 +295,31 @@ export default function ReportCrime() {
                 ))}
               </div>
             </div>
-
-            <Button className="w-full bg-dci-blue hover:bg-blue-700" disabled={!isFormValid} onClick={handleSubmit}>
-              Submit report
-            </Button>
-          </div>
-        </div>
+        <Button 
+          className="w-full bg-dci-blue hover:bg-blue-700" 
+          disabled={!isFormValid || isPending} 
+          onClick={handleSubmit}
+        >
+          {isPending ? "Submitting..." : "Submit report"}
+        </Button>
+      </div>
+      </div>
       </div>
 
       {/* Processing Modal */}
-      {isSubmitting && (
+      {isPending && (
         <LoadingDialog title="Processing" isOpen={true} />
       )}
 
       {/* Success Modal */}
       {isSuccess && (
-        <SuccessDialog title="Report submitted" isOpen={true} />
+        // <SuccessDialog 
+        //   title="Your report has been submitted for further review and action" 
+        //   isOpen={isOpen} 
+        //   onClose={handleClose} 
+        // />
+        <ReportIdDialog reportId={data?.data.report_id} open={isOpen} onOpenChange={handleClose} />
       )}
     </>
   )
 }
-

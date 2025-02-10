@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, UserCircle } from "lucide-react";
-import { useStore } from "@/store/useStore";
+import { userStore } from "@/store/useStore";
 import { Icons } from "@/components/icons";
+import Image from "next/image";
 
 export default function Home() {
-  const { user, signOut } = useStore();
+  const { user, signOut } = userStore();
   const router = useRouter();
 
   // Removed automatic redirect check
@@ -28,10 +29,8 @@ export default function Home() {
       {/* Header */}
       <div className="relative p-4 flex justify-between items-center bg-black/40 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-dci-blue text-white flex items-center justify-center font-bold">
-            D
-          </div>
-          <span className="font-semibold text-white">Logo</span>
+          <Image src="/icons/dci-logo.svg" alt="DCI Logo" width={30} height={30} />
+          <span className="font-semibold text-white">DCI</span>
         </div>
         <button
           onClick={() => {
@@ -44,8 +43,8 @@ export default function Home() {
           className="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center font-bold"
         >
           {user ? (
-            user.isVerified ? (
-              user.name.charAt(0).toUpperCase()
+            user.full_name ? (
+              user.full_name.charAt(0).toUpperCase()
             ) : (
               <Icons.user className="h-6 w-6" />
             )
@@ -74,7 +73,7 @@ export default function Home() {
             className="w-full bg-white rounded-[40px] h-[56px]"
             onClick={() => router.push("/track")}
           >
-            <Icons.eye className="mr-2 size-5" />
+            <Icons.eye className="mr-2 size-[20px]" />
             Track your case
           </Button>
         </div>

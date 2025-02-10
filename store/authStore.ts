@@ -3,23 +3,24 @@ import { type User, GoogleAuthProvider, signInWithPopup, signOut } from "firebas
 import { auth } from "../lib/firebase"
 
 interface AuthState {
-  user: User | null
+  firebase_user: User | null
   loading: boolean
   error: string | null
   signInWithGoogle: () => Promise<User | null>
   logout: () => Promise<void>
   setUser: (user: User | null) => void
+  isVerified: () => boolean
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  firebase_user: null,
   loading: true,
   error: null,
   signInWithGoogle: async () => {
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
-      set({ user: result.user, error: null })
+      set({ firebase_user: result.user, error: null })
       return result.user
     } catch (error) {
       set({ error: (error as Error).message })
@@ -28,8 +29,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: async () => {
     await signOut(auth)
-    set({ user: null })
+    set({ firebase_user: null })
   },
-  setUser: (user) => set({ user, loading: false }),
+  setUser: (firebase_user) => set({ firebase_user, loading: false }),
+  isVerified: () => {
+    const user = get().firebase_user;
+    return user ? user.emailVerified : false;
+  }
 }))
 
